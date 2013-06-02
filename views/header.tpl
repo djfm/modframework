@@ -1,0 +1,1 @@
+<h1><a href="{module_action module=$moduleName}">{$displayName}</a></h1>
