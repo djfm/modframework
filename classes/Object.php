@@ -432,7 +432,7 @@ class Object extends ObjectModel
 
 		foreach(Db::getInstance()->ExecuteS($sql) as $row)
 		{
-			$class     = get_class();
+			$class     = get_called_class();
 			$objects[] = new $class($row[$def['identifier']]);
 		}
 
