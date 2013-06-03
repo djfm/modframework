@@ -31,4 +31,6 @@
 		</tr>
 		{/foreach}
 	</table>
+{else}
+	<p>{l s='There are no entities to display here yet!' mod='modframework'}</p>
 {/if}

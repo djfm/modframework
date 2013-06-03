@@ -298,7 +298,7 @@ class ModuleBase extends Module
 		global $cookie;
 		require_once _PS_MODULE_DIR_."/{$this->name}/models/$model.php";
 
-		$object = new $model((int)$_GET['object_identifier'], $cookie->id_lang);
+		$object = new $model((int)$_GET['object_identifier']);
 		$object->{$object->identifier} = $object->id;
 
 		return array('model' => $model, 'type' => $object->getShowType(array('id_lang' => $cookie->id_lang)), 'module_name' => $this->name);

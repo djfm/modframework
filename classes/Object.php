@@ -23,6 +23,13 @@ class Object extends ObjectModel
 			static::$object_definition['lang']			= false;
 			static::$object_definition['identifier']	= static::$description['identifier'];
 			static::$object_definition['fields']		= array();
+			static::$object_definition['autodate']	 	= isset(static::$description['autodate']) && static::$description['autodate'];
+
+			if(static::$object_definition['autodate'])
+			{
+				static::$description['fields']['date_add'] = 'datetime ?';
+				static::$description['fields']['date_upd'] = 'datetime ?';
+			}
 
 			$exp = '/^\s*([a-z]+)(?:\s*\(\s*(\d+)\s*\))?\s*(lang)?\s*(\?)?\s*(\w+)?\s*$/';
 
@@ -32,7 +39,7 @@ class Object extends ObjectModel
 
 				if(preg_match($exp, $def, $m))
 				{
-					$type 		= $m[1];
+					$type 		= strtolower($m[1]);
 					$size 		= isset($m[2]) ? $m[2] : false;
 					$lang 		= isset($m[3]) && ($m[3] == 'lang');
 					$optional 	= isset($m[4]) && ($m[4] == '?');
@@ -43,6 +50,14 @@ class Object extends ObjectModel
 						if($type === 'int')
 						{
 							$validator = 'isInt';
+						}
+						else if($type == 'datetime')
+						{
+							$validator = 'isDateFormat';
+						}
+						else if($type == 'date')
+						{
+							$validator = 'isDate';
 						}
 					}
 
@@ -307,7 +322,7 @@ class Object extends ObjectModel
 		return implode(' ', array_map('ucfirst', explode('_', $name)));
 	}
 
-	public function makeType($fieldList, $options = array())
+	public function makeType($fieldList, $kind, $options = array())
 	{
 		$def = static::getObjectDefinition();
 		$type = array();
@@ -325,6 +340,12 @@ class Object extends ObjectModel
 				$spec  = $def['fields'][$field];
 			}
 			
+			$typeoverride = lcfirst($kind).'TypeOverride';
+			if(method_exists($this, $typeoverride) && is_array($override = $this->$typeoverride($field)))
+			{
+				$spec = array_merge($spec, $override);
+			}
+
 			$spec['id'] 	= ($field == $def['identifier']);
 
 			if($spec['lang'] && isset($options['id_lang']) && $options['id_lang'])
@@ -361,18 +382,18 @@ class Object extends ObjectModel
 
 	public function getListType($options = array())
 	{
-		return $this->makeType($this->getListFields(), $options);
+		return $this->makeType($this->getListFields(), 'List', $options);
 	}
 
 	public function getFormFields()
 	{
-		$def = static::getObjectDefinition();
-		return array_keys($def['fields']);
+		$def 	= static::getObjectDefinition();
+		return array_diff(array_keys($def['fields']), array('date_add', 'date_upd'));
 	}
 
 	public function getFormType($options = array())
 	{
-		return $this->makeType($this->getFormFields(), $options);
+		return $this->makeType($this->getFormFields(), 'Form', $options);
 	}
 
 	public function getShowFields()
@@ -383,7 +404,7 @@ class Object extends ObjectModel
 
 	public function getShowType($options = array())
 	{
-		return $this->makeType($this->getShowFields());
+		return $this->makeType($this->getShowFields(), 'Show', $options);
 	}
 
 	public static function findAll($conditions = array(), $pagination = array())
@@ -442,6 +463,11 @@ class Object extends ObjectModel
 	public function language_field($name, $id_lang)
 	{
 		return $this->{$name}[$id_lang];
+	}
+
+	public function l($str)
+	{
+		return $str;
 	}
 
 }

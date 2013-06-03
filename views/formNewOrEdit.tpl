@@ -31,6 +31,28 @@ function toggleLanguagSelection(node)
 
 	{if $spec['type'] == 'text'}
 		<textarea name="{$input_name}" style="width:320px">{$value}</textarea>
+	{else if $spec['type'] == 'select'}
+		{if isset($spec['options'])}
+			<select name="{$input_name}">
+				{foreach from=$spec['options'] item=option}
+					<option {if $value == $option}selected="true"{/if}>{$option}</option>
+				{/foreach}
+			</select>
+		{else if isset($spec['options_with_values'])}
+			<select name="{$input_name}">
+				{foreach from=$spec['options_with_values'] item=option key=option_value}
+					<option value="{$option_value}" {if $value == $option_value}selected="true"{/if}>{$option}</option>
+				{/foreach}
+			</select>
+		{else}
+			{l s='Error: Missing Options For List!!' mod='modframework'}
+		{/if}
+	{else if $spec['type'] == 'int'}
+		<input name="{$input_name}" type="number" value="{$value}"/>
+	{else if $spec['type'] == 'float' or $spec['type'] == 'double'}
+		<input name="{$input_name}" type="number" step="any" value="{$value}"/>
+	{else if $spec['type'] == 'date'}
+		<input name="{$input_name}" type="date" value="{$value}"/>
 	{else}
 		<input name="{$input_name}" type="text" value="{$value}"/>
 	{/if}
@@ -86,6 +108,9 @@ function toggleLanguagSelection(node)
 							{/foreach}
 						</div>
 					</div>
+				{/if}
+				{if $spec['required']}
+					<sup>*</sup>
 				{/if}
 				<p style="clear:both"></p>
 			</div>
