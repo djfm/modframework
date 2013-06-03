@@ -58,11 +58,11 @@ function toggleLanguagSelection(node)
 	<form method="post" action="{module_action module={$module_name} action="create{$model}"}">
 
 		{if $operation == 'edit'}
-			<input type="hidden" name="{$object->identifier}" value="{$object->id}"/>
+			<input type="hidden" name="{$identifier}" value="{$id}"/>
 		{/if}
 
 		{foreach from=$fields item=spec key=name}
-			<label>{$name}</label>
+			<label>{$spec['title']}</label>
 			<div class="margin-form">
 				{if $spec['lang']}					
 						{foreach from=$languages item=language}

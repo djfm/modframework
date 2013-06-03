@@ -302,94 +302,88 @@ class Object extends ObjectModel
 		return parent::getTranslationsFields(array_keys($this->fieldsValidateLang));
 	}
 
-	public function prepareFormType($operation)
+	public static function titleize($name)
+	{
+		return implode(' ', array_map('ucfirst', explode('_', $name)));
+	}
+
+	public function makeType($fieldList, $options = array())
 	{
 		$def = static::getObjectDefinition();
 		$type = array();
-		foreach($this->getFormType($operation) as $key => $spec)
+
+		foreach($fieldList as $maybe_field => $maybe_spec)
 		{
-			if(is_array($spec))
+			if(is_array($maybe_spec))
 			{
-				$type[$key] = $spec;
-				$type[$key]['value'] = $this->$key;
+				$field = $maybe_field;
+				$spec  = $maybe_spec;
 			}
 			else
 			{
-				$type[$spec] = $def['fields'][$spec];
-				$type[$spec]['value'] = $this->$spec;
+				$field = $maybe_spec;
+				$spec  = $def['fields'][$field];
 			}
+			
+			$spec['id'] 	= ($field == $def['identifier']);
 
-		}
-		return $type;
-	}
-
-	public function getFormType($operation)
-	{
-		$def = static::getObjectDefinition();
-		return array_keys($def['fields']);
-	}
-
-	public static function prepareListType()
-	{
-		$def = static::getObjectDefinition();
-		$type = array();
-		foreach(static::getListType() as $key => $spec)
-		{
-			if(is_array($spec))
+			if($spec['lang'] && isset($options['id_lang']) && $options['id_lang'])
 			{
-				$type[$key] = $spec;
+				$spec['value']	= $this->{$field}[$options['id_lang']];
+			}
+			else if(!$spec['id'])
+			{
+				$spec['value']	= $this->$field;
 			}
 			else
 			{
-				if($spec == $def['identifier'])
-				{
-					$type[$spec] = array('type' => 'int', 'id' => true);
-				}
-				else
-				{
-					$type[$spec] = $def['fields'][$spec];
-				}
+				$spec['value'] = $this->id;
+				$spec['title'] = 'ID';
 			}
 
+			if(!isset($spec['title']))
+			{
+				$spec['title'] = static::titleize($field);
+			}
+
+			$type[$field] = $spec;
 		}
+
+
 		return $type;
 	}
 
-	public static function getListType()
+	public function getListFields()
 	{
 		$def = static::getObjectDefinition();
 		return array_merge(array($def['identifier']),array_keys($def['fields']));
 	}
 
-	public function prepareShowType()
+	public function getListType($options = array())
 	{
-		$def = static::getObjectDefinition();
-		$type = array();
-		foreach($this->getShowType() as $key => $spec)
-		{
-			if(is_array($spec))
-			{
-				$type[$key] = $spec;
-			}
-			else
-			{
-				if($spec == $def['identifier'])
-				{
-					$type[$spec] = array('type' => 'int', 'id' => true);
-				}
-				else
-				{
-					$type[$spec] = $def['fields'][$spec];
-				}
-			}
-
-		}
-		return $type;
+		return $this->makeType($this->getListFields(), $options);
 	}
 
-	public function getShowType()
+	public function getFormFields()
 	{
-		return static::getListType();
+		$def = static::getObjectDefinition();
+		return array_keys($def['fields']);
+	}
+
+	public function getFormType($options = array())
+	{
+		return $this->makeType($this->getFormFields(), $options);
+	}
+
+	public function getShowFields()
+	{
+		$def = static::getObjectDefinition();
+		return array_keys($def['fields']);
+	}
+
+	public function getShowType($options = array())
+	{
+		return $this->makeType($this->getShowFields());
 	}
 
 	public static function findAll($conditions = array(), $pagination = array())

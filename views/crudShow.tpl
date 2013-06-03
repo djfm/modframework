@@ -16,12 +16,12 @@
 
 <dl class="show">
 	{foreach from=$type key=name item=spec}
-		<dt>{if isset($spec['title'])}{$spec['title']}{else if isset($spec['id']) and $spec['id']}ID{else}{$name}{/if}</dt>
+		<dt>{$spec['title']}</dt>
 		<dd>
 			{if $spec['type'] == 'text'}
-				<pre>{$object->$name}</pre>
+				<pre>{$spec['value']}</pre>
 			{else}
-				{$object->$name}
+				{$spec['value']}
 			{/if}
 			
 		</dd>

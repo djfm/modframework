@@ -249,7 +249,7 @@ class ModuleBase extends Module
 			$object     = new $model();
 		}
 
-		$fields = $object->prepareFormType('new');
+		$fields = $object->getFormType();
 
 		return array('fields' => $fields, 'model' => $model, 'operation' => 'new');
 	}
@@ -265,9 +265,9 @@ class ModuleBase extends Module
 			$object = new $model((int)$_GET['object_identifier']);
 		}
 
-		$fields = $object->prepareFormType('edit');
+		$fields = $object->getFormType();
 
-		return array('fields' => $fields, 'model' => $model, 'operation' => 'edit', 'object' => $object);
+		return array('fields' => $fields, 'model' => $model, 'operation' => 'edit', 'identifier' => $object->identifier, 'id' => $object->id);
 	}
 
 	public function crudList($model)
@@ -276,9 +276,14 @@ class ModuleBase extends Module
 		require_once _PS_MODULE_DIR_."/{$this->name}/models/$model.php";
 
 		$objects = $model::findAll();
-		$type    = $model::prepareListType();
 
-		return array('model' => $model, 'objects' => $objects, 'type' => $type, 'id_lang' => $cookie->id_lang, 'module_name' => $this->name);
+		$types   = array();
+		foreach($objects as $object)
+		{
+			$types[$object->id] = $object->getListType(array('id_lang' => $cookie->id_lang));
+		}
+
+		return array('model' => $model, 'types' => $types, 'id_lang' => $cookie->id_lang, 'module_name' => $this->name);
 	}
 
 	public function crudShow($model)
@@ -289,7 +294,7 @@ class ModuleBase extends Module
 		$object = new $model((int)$_GET['object_identifier'], $cookie->id_lang);
 		$object->{$object->identifier} = $object->id;
 
-		return array('model' => $model, 'object' => $object, 'type' => $object->prepareShowType(), 'id_lang' => $cookie->id_lang, 'module_name' => $this->name);
+		return array('model' => $model, 'type' => $object->getShowType(array('id_lang' => $cookie->id_lang)), 'module_name' => $this->name);
 	}
 
 	/**
