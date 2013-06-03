@@ -27,6 +27,7 @@
 	
 	div#devbar a.danger
 	{
+		float:right;
 		background-color: #FF4747;
 	}
 
@@ -43,6 +44,9 @@
 	<span class="devbar">developer toolbar</span>
 	<div id="devbar">
 		<a id="resetlink" class="danger" href="">{l s='Reinstall' mod='modframework'}</a>
+		{foreach from=$devbar_models item=link key=name}
+			<a href="{$link}" class="model">{$name}</a>
+		{/foreach}
 	</div>
 </div>
 

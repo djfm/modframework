@@ -156,6 +156,13 @@ class ModuleBase extends Module
 		{
 			global $smarty;
 			$smarty->assign('reseturl', $this->getResetUrl());
+			$models  = $this->getModels();
+			$model_links = array();
+			foreach($models as $model)
+			{
+				$model_links[$model] = $this->getModuleActionUrl($this->name, lcfirst($model)."List");
+			}
+			$smarty->assign('devbar_models', $model_links);
 			$smarty->assign('devbar', $this->renderView('devbar'));
 		}
 	}
@@ -313,6 +320,9 @@ class ModuleBase extends Module
 			$template_parameters = $this->$method();
 			$view = $action;
 		}
+		/**
+		* The following are Virtual Routes for CRUD management of entities
+		*/
 		else
 		{
 			/**
@@ -528,6 +538,24 @@ class ModuleBase extends Module
 	*/
 	public function getErrorAction()
 	{
+	}
+
+	public function getModels()
+	{
+		$models = array();
+		$dir = _PS_MODULE_DIR_ . "/{$this->name}/models";
+		if(is_dir($dir))
+		{
+			foreach(scandir($dir) as $entry)
+			{
+				$m = array();
+				if(preg_match('/(\w+)\.php$/', $entry, $m))
+				{
+					$models[] = $m[1];
+				}
+			}
+		}
+		return $models;
 	}
 
 	public function executeModelsSQL($operation)
