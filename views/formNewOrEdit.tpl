@@ -30,16 +30,16 @@ function toggleLanguagSelection(node)
 	{/if}
 
 	{if $spec['type'] == 'text'}
-		<textarea name="{$input_name}" style="width:320px">{$value}</textarea>
+		<textarea id="{$input_name}" name="{$input_name}" style="width:320px">{$value}</textarea>
 	{else if $spec['type'] == 'select'}
 		{if isset($spec['options'])}
-			<select name="{$input_name}">
+			<select id="{$input_name}" name="{$input_name}">
 				{foreach from=$spec['options'] item=option}
 					<option {if $value == $option}selected="true"{/if}>{$option}</option>
 				{/foreach}
 			</select>
 		{else if isset($spec['options_with_values'])}
-			<select name="{$input_name}">
+			<select id="{$input_name}" name="{$input_name}">
 				{foreach from=$spec['options_with_values'] item=option key=option_value}
 					<option value="{$option_value}" {if $value == $option_value}selected="true"{/if}>{$option}</option>
 				{/foreach}
@@ -48,13 +48,13 @@ function toggleLanguagSelection(node)
 			{l s='Error: Missing Options For List!!' mod='modframework'}
 		{/if}
 	{else if $spec['type'] == 'int'}
-		<input name="{$input_name}" type="number" value="{$value}"/>
+		<input id="{$input_name}" name="{$input_name}" type="number" value="{$value}"/>
 	{else if $spec['type'] == 'float' or $spec['type'] == 'double'}
-		<input name="{$input_name}" type="number" step="any" value="{$value}"/>
+		<input id="{$input_name}" name="{$input_name}" type="number" step="any" value="{$value}"/>
 	{else if $spec['type'] == 'date'}
-		<input name="{$input_name}" type="date" value="{$value}"/>
+		<input id="{$input_name}" name="{$input_name}" type="date" value="{$value}"/>
 	{else}
-		<input name="{$input_name}" type="text" value="{$value}"/>
+		<input id="{$input_name}" name="{$input_name}" type="text" value="{$value}"/>
 	{/if}
 
 {/function}
@@ -84,35 +84,37 @@ function toggleLanguagSelection(node)
 		{/if}
 
 		{foreach from=$fields item=spec key=name}
-			<label>{$spec['title']}</label>
-			<div class="margin-form">
-				{if $spec['lang']}					
-						{foreach from=$languages item=language}
-							<div data-id-lang="{$language['id_lang']}" style="float:left; {if $language['id_lang'] != $id_lang}display:none;{/if}">
-								{make_field_html input_name="{$model}_{$name}[{$language['id_lang']}]" spec=$spec language_id=$language['id_lang']}
-							</div>
-						{/foreach}
-						
-				{else}
-					{make_field_html input_name="{$model}_{$name}" spec=$spec}
-				{/if}
-
-				{if $spec['lang']}
-					<div class="language_menu">
-						<div class="displayed_flag">
-							<img class="current_language pointer" src="../img/l/{$id_lang}.jpg" onclick="javascript:toggleLanguagSelection(this);">
-						</div>
-						<div class="language_flags" class="language_flags" style="display: none;">
+			<div id="{$model}_{$name}_container">
+				<label>{$spec['title']}</label>
+				<div class="margin-form">
+					{if $spec['lang']}					
 							{foreach from=$languages item=language}
-								<img src="../img/l/{$language['id_lang']}.jpg" class="pointer" alt="{$language['name']}" title="{$language['name']}" onclick='javascript:changeLanguageFields(this, {$language["id_lang"]})'/>
+								<div data-id-lang="{$language['id_lang']}" style="float:left; {if $language['id_lang'] != $id_lang}display:none;{/if}">
+									{make_field_html input_name="{$model}_{$name}[{$language['id_lang']}]" spec=$spec language_id=$language['id_lang']}
+								</div>
 							{/foreach}
+							
+					{else}
+						{make_field_html input_name="{$model}_{$name}" spec=$spec}
+					{/if}
+
+					{if $spec['lang']}
+						<div class="language_menu">
+							<div class="displayed_flag">
+								<img class="current_language pointer" src="../img/l/{$id_lang}.jpg" onclick="javascript:toggleLanguagSelection(this);">
+							</div>
+							<div class="language_flags" class="language_flags" style="display: none;">
+								{foreach from=$languages item=language}
+									<img src="../img/l/{$language['id_lang']}.jpg" class="pointer" alt="{$language['name']}" title="{$language['name']}" onclick='javascript:changeLanguageFields(this, {$language["id_lang"]})'/>
+								{/foreach}
+							</div>
 						</div>
-					</div>
-				{/if}
-				{if $spec['required']}
-					<sup>*</sup>
-				{/if}
-				<p style="clear:both"></p>
+					{/if}
+					{if $spec['required']}
+						<sup>*</sup>
+					{/if}
+					<p style="clear:both"></p>
+				</div>
 			</div>
 		{/foreach}
 		<div class="margin-form">

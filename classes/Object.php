@@ -2,8 +2,6 @@
 
 class Object extends ObjectModel
 {
-
-	protected static $object_definition = false;
 	protected static $fields_for_getfields = array();
 
 	public $identifier;
@@ -156,6 +154,8 @@ class Object extends ObjectModel
 							.static::fieldsToSQL($fields_lang)
 							.", PRIMARY KEY(".$definition['identifier'].", id_lang));";
 		}
+
+		echo "<pre>".print_r($statements,1)."</pre>";
 
 		return $statements;
 	}
