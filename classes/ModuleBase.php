@@ -16,6 +16,42 @@ class ModuleBase extends Module
 		parent::__construct();
 	}
 
+	public function getHookList()
+	{
+		$hooks = array('backOfficeHeader');
+		if(isset($this->hooks) && is_array($this->hooks))
+		{
+			$hooks = array_merge($hooks, $this->hooks);
+		}
+		return $hooks;
+	}
+
+	public function autoRegisterHooks()
+	{
+		foreach($this->getHookList() as $hook)
+		{
+			$ok = $this->registerHook($hook);
+			if(!$ok)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public function autoUnregisterHooks()
+	{
+		foreach($this->getHookList() as $hook)
+		{
+			$ok = $this->unregisterHook($hook);
+			if(!$ok)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	/**
 	* Initialize some general stuff, like smarty functions.
 	*/
@@ -304,200 +340,147 @@ class ModuleBase extends Module
 		return array('model' => $model, 'type' => $object->getShowType(array('id_lang' => $cookie->id_lang)), 'module_name' => $this->name);
 	}
 
-	/**
-	* Handles the request.
-	*/
-	public function answerWithAction($action)
+	public function crudCreate($model)
 	{
-		$http_method = strtolower($_SERVER['REQUEST_METHOD']);
+		$validation = false;
 		
-		$method = $http_method.ucfirst($action).'Action';
+		$object = $this->assignFromPost($model, $validation);
 
-		$template_parameters = false;
+		$extra_template_parameters=array();
+
+		if($validation !== true)
+		{
+			$extra_template_parameters['validation_error'] = $validation;
+		}
+		else
+		{
+			if($saved = $object->save())
+			{
+				$extra_template_parameters['saved'] = true;
+			}
+			else
+			{
+				$extra_template_parameters['saved'] = false;
+			}
+		}
+
+		if((int)$object->id > 0)
+		{
+			$template_parameters = $this->crudEdit($model, $object);
+		}
+		else
+		{
+			$template_parameters = $this->crudNew($model, $object);
+		}
+
+		return array_merge($template_parameters, $extra_template_parameters);
+	}
+
+	public function crudDelete($model)
+	{
+		require_once _PS_MODULE_DIR_."/{$this->name}/models/$model.php";
+		$object   = new $model((int)Tools::getValue('object_identifier'));
+		if($object->delete())
+		{
+
+		}
+		Tools::redirectAdmin(static::getModuleActionUrl($this->name, lcfirst($model)."List"));
+		exit;
+	}
+
+	/**
+	* Determines whether the Action is a valid CRUD Action
+	*/
+	public function isCrudAction($action)
+	{
+		$crud_method = false;
+		$model 		 = false;
+
+		$m   = array();
+		if(preg_match('/^(create|new|edit|delete|show)(\w+)/', $action, $m))
+		{
+			$crud_method = $m[1];
+			$model       = $m[2];
+			$method      = 'crud'.ucfirst($crud_method);
+		}
+		else if(preg_match('/(\w+)List/', $action, $m))
+		{
+			$crud_method = 'list';
+			$model       = ucfirst($m[1]);
+			$method      = 'crudList';
+		}
+
+		if($model === false)
+		{
+			return false;
+		}
+
+		if(($crud_method == 'create' or $crud_method == 'delete') and $_SERVER['REQUEST_METHOD'] !== 'POST')
+		{
+			return false;
+		}
+
+		if(in_array($model, $this->getModels()))
+		{
+			return array('model' => $model, 'method' => $method, 'crud_method' => $crud_method);
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	/**
+	* Determines the Action & View to use from the request parameters
+	*/
+	public function determineActionAndView()
+	{
+		if(!($action = Tools::getValue('moduleAction')))
+		{
+			$action = 'default';
+		}
+
+		$method 	= strtolower($_SERVER['REQUEST_METHOD']).ucfirst($action).'Action';
+		$view       = false;
+
+		//"Real" route
+		if($this->viewPath($action))
+		{
+			$view = $action;
+		}
+		//"Virtual" route
+		else if($crud = $this->isCrudAction($action))
+		{
+			if($crud['crud_method'] == 'new' or $crud['crud_method'] == 'edit' or $crud['crud_method'] == 'create')
+			{
+				$view = 'formNewOrEdit';
+			}
+			else if($crud['crud_method'] == 'list' or $crud['crud_method'] == 'delete')
+			{
+				$view = 'crudList';
+			}
+			else if($crud['crud_method'] == 'show')
+			{
+				$view = 'crudShow';
+			}
+		}
+
+		if($view == false)
+		{
+			return false;
+		}
 
 		if(method_exists($this, $method))
 		{
-			$template_parameters = $this->$method();
-			$view = $action;
+			return array('method' => $method, 'view' => $view, 'type' => 'regular');
 		}
-		/**
-		* The following are Virtual Routes for CRUD management of entities
-		*/
-		else
+		else if($crud)
 		{
-			/**
-			* Index
-			*/
-			$m = array();
-			if(preg_match('/^(\w*?)List$/', $action, $m))
-			{
-				$model = ucfirst($m[1]);
-				$template_parameters = $this->crudList($model);
-				if($this->specializedViewPath($action) !== false)
-				{
-					$view = $action;
-				}
-				else
-				{
-					$view = 'crudList';
-				}
-			}
-			/**
-			* Show
-			*/
-			else if(preg_match('/^show(\w+)$/', $action, $m) && $http_method=='get')
-			{
-				$model = $m[1];
-				$template_parameters = $this->crudShow($model);
-				if($this->specializedViewPath($action) !== false)
-				{
-					$view = $action;
-				}
-				else
-				{
-					$view = 'crudShow';
-				}
-			}
-			/**
-			* New
-			*/
-			else if(preg_match('/^new(\w+)$/', $action, $m) && $http_method=='get')
-			{
-				$model = $m[1];
-				$template_parameters = $this->crudNew($model);
-				if($this->specializedViewPath($action) !== false)
-				{
-					$view = $action;
-				}
-				else
-				{
-					$view = 'formNewOrEdit';
-				}
-			}
-			/**
-			* Edit
-			*/
-			else if(preg_match('/^edit(\w+)$/', $action, $m) && $http_method=='get')
-			{
-				$model = $m[1];
-				$template_parameters = $this->crudEdit($model);
-				if($this->specializedViewPath($action) !== false)
-				{
-					$view = $action;
-				}
-				else
-				{
-					$view = 'formNewOrEdit';
-				}
-			}
-			/**
-			* Create
-			*/
-			else if(preg_match('/^create(\w+)$/', $action, $m) && $http_method=='post')
-			{
-				$model 		= $m[1];
-				$validation = false;
-				
-				$view = 'formNewOrEdit';
-
-				$object = $this->assignFromPost($model, $validation);
-
-				$extra_template_parameters=array();
-
-				if($validation !== true)
-				{
-					$extra_template_parameters['validation_error'] = $validation;
-				}
-				else
-				{
-					if($saved = $object->save())
-					{
-						$extra_template_parameters['saved'] = true;
-					}
-					else
-					{
-						$extra_template_parameters['saved'] = false;
-					}
-				}
-
-				if((int)$object->id > 0)
-				{
-					$template_parameters = $this->crudEdit($model, $object);
-				}
-				else
-				{
-					$template_parameters = $this->crudNew($model, $object);
-				}
-
-				$template_parameters = array_merge($template_parameters, $extra_template_parameters);
-			}
-			/**
-			* Delete
-			*/
-			else if(preg_match('/^delete(\w+)$/', $action, $m) && $http_method == 'post')
-			{
-				$model = $m[1];
-				require_once _PS_MODULE_DIR_."/{$this->name}/models/$model.php";
-				$object   = new $model((int)Tools::getValue('object_identifier'));
-				if($object->delete())
-				{
-
-				}
-				Tools::redirectAdmin(static::getModuleActionUrl($this->name, lcfirst($model)."List"));
-				exit;
-			}
-		}
-
-		if($template_parameters !== false)
-		{	
-			//If the action returns an array, we want to display the corresponding view with the array's parameters assigned.
-			if(is_array($template_parameters) or ($template_parameters === null))
-			{
-
-				$this->assignFlash();
-
-				global $smarty;
-
-				if(is_array($template_parameters))
-				{	
-					$smarty->assign($template_parameters);
-				}
-
-				$this->prepareHeader();
-				$header =  $this->renderView('header');
-
-				$this->process();
-
-				$body = $this->renderView($view);
-
-				$this->prepareFooter();
-				$footer = $this->renderView('footer');
-
-				$smarty->assign('header', $header);
-				$smarty->assign('body'	, $body);
-				$smarty->assign('footer', $footer);
-
-				$html   = $this->renderView('layout');
-
-				if($html !== false)
-				{					
-					//PrestaShop 1.5 needs to *return* the html.
-					if(static::prestaShopIs15())
-					{
-						return $html;
-					}
-					//Whereas PrestaShop 1.4 *echo's* it.
-					else
-					{
-						echo $html;
-					}
-				}
-			}
+			return array('method' => $crud['method'], 'view' => $view, 'type' => 'crud', 'model' => $crud['model']);
 		}
 		else
 		{
-			$this->flash('errors', array($this->l("Could not find route named '$action'!")));
-			Tools::redirectAdmin(static::getModuleActionUrl($this->name, 'error'));
+			return false;
 		}
 	}
 
@@ -506,30 +489,73 @@ class ModuleBase extends Module
 	*/
 	public function getContent()
 	{
-		if($action = Tools::getValue("moduleAction"))
+		$route = $this->determineActionAndView();
+
+		if(!$route)
 		{
-			$this->answerWithAction($action);
+			$route = array('type' => 'regular', 'method' => 'getErrorAction', 'view' => 'error');
+			$this->flash('errors', array($this->l("Could not find route!")));
+		}
+		
+		$template_parameters = false;
+		if($route['type'] == 'crud')
+		{
+			$template_parameters = $this->{$route['method']}($route['model']);
 		}
 		else
 		{
-			if($this->specializedViewPath('default'))
+			$template_parameters = $this->{$route['method']}();
+		}
+		
+		global $smarty;
+		if(is_array($template_parameters))
+		{	
+			$smarty->assign($template_parameters);
+		}
+
+		$this->process();
+
+		$this->assignFlash();
+
+		$this->prepareHeader();
+		$header =  $this->renderView('header');
+
+		$body = $this->renderView($route['view']);
+
+		if(isset($this->devmode) && $this->devmode)
+		{
+			$m = array();
+			preg_match('#/modules/(.*)#', $this->viewPath($route['view']), $m);
+			$smarty->assign('view_path', $m[1]);
+		}
+
+		$this->prepareFooter();
+		$footer = $this->renderView('footer');
+
+		$smarty->assign('header', $header);
+		$smarty->assign('body'	, $body);
+
+		
+
+		$smarty->assign('footer', $footer);
+
+		$html   = $this->renderView('layout');
+
+		if($html !== false)
+		{					
+			//PrestaShop 1.5 needs to *return* the html.
+			if(static::prestaShopIs15())
 			{
-				return $this->answerWithAction('default');
+				return $html;
 			}
+			//Whereas PrestaShop 1.4 *can echo* it: it then doesn't display the ugly hooks management tables.
 			else
 			{
-				$html = $this->l("<p>This module has no specific configuration options.</p>");
-				if(static::prestaShopIs15())
-				{
-					return $html;
-				}
-				//Whereas PrestaShop 1.4 *echo's* it.
-				else
-				{
-					echo $html;
-				}
+				echo $html;
 			}
 		}
+		
+
 	}
 
 
@@ -601,12 +627,83 @@ class ModuleBase extends Module
 
 	public function install()
 	{
-		return $this->installModels() && parent::install();
+		/**
+		* I'm sorry but Late Static Binding is MANDATORY.
+		*/
+		if(version_compare(phpversion(), "5.3", "<"))
+		{
+			return false;
+		}
+
+		return $this->installModels() && parent::install() && $this->autoRegisterHooks();
 	}
 
 	public function uninstall()
 	{
-		return $this->unInstallModels() && parent::uninstall();
+		return $this->unInstallModels() && parent::uninstall() && $this->autoUnregisterHooks();
+	}
+
+	public function getUrlFromPathRelativeToMe($path, $force_framework_version=false)
+	{
+		$url  = preg_match('#^HTTPS#', $_SERVER['SERVER_PROTOCOL']) ? "https://" : "http://";
+		$url .= $_SERVER['SERVER_NAME'] . __PS_BASE_URI__;
+		$url .= 'modules/' . ($force_framework_version ? 'modframework' : $this->name);
+		$url .= '/' . $path;
+		return $url;
+	}
+
+	/**
+	* TODO: TEST
+	*/
+	public function generateJSIncludeCode($script)
+	{
+		$url = false;
+		if(file_exists(_PS_MODULE_DIR_."{$this->name}/js/$script.js"))
+		{
+			$url = $this->getUrlFromPathRelativeToMe("js/$script.js");
+		}
+		else if(file_exists(_PS_MODULE_DIR_."modframework/js/$script.js"))
+		{
+			$url = $this->getUrlFromPathRelativeToMe("js/$script.js", true);
+		}
+		if($url !== false)
+		{
+			return "<script type='text/javascript' src='$url'></script>";
+		}
+		else return false;
+	}
+
+	public function hookBackOfficeHeader()
+	{
+		$code = "";
+		/**
+		* Only do this when we're on one of our module's pages!
+		*/
+		if(Tools::getValue('tab') == 'AdminModules' && Tools::getValue('configure') == $this->name)
+		{
+			if($route = $this->determineActionAndView())
+			{
+				$action = Tools::getValue('moduleAction');
+
+				$files = array($action, $route['view']);
+
+				if($route['type'] == 'crud')
+				{
+					$files[] = $route['view'] . $route['model'];
+				}
+
+				foreach($files as $file)
+				{
+					if($js = $this->generateJSIncludeCode($file))
+					{
+						$code .= "\n".$js;
+					}
+				}
+				
+			}
+		}
+
+		return $code;
 	}
 
 }

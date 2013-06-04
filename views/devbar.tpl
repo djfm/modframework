@@ -37,6 +37,11 @@
 		color:#555;
 	}
 
+	span.path
+	{
+		color:blue;
+	}
+
 </style>
 
 <div id="devzone">
@@ -48,6 +53,7 @@
 			<a href="{$link}" class="model">{$name}</a>
 		{/foreach}
 	</div>
+	<p>{l s='Current View:' mod='modframework'} <span class="path">{$view_path}</span></p>
 </div>
 
 <script type="text/javascript">
