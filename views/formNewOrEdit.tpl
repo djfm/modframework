@@ -11,6 +11,14 @@ function toggleLanguagSelection(node)
 {
 	$(node).parents('div.language_menu').find('div.language_flags').toggle();
 }
+
+function submit_parent_form(node)
+{
+	var form = $($(node).parents('form')[0]);
+	form.append($('<input type="hidden" name="form_listener"/>').attr('value', 1));
+	form.submit();
+}
+
 </script>
 
 <style type="text/css">
@@ -29,17 +37,21 @@ function toggleLanguagSelection(node)
 		{assign var=value value=$spec['value']}
 	{/if}
 
+	{if $spec['listen']}
+		{assign var=extra value="onchange='javascript:submit_parent_form(this)'"}
+	{/if}
+
 	{if $spec['type'] == 'text'}
-		<textarea id="{$input_name}" name="{$input_name}" style="width:320px">{$value}</textarea>
+		<textarea id="{$input_name}" name="{$input_name}" {$extra} style="width:320px">{$value}</textarea>
 	{else if $spec['type'] == 'select'}
 		{if isset($spec['options'])}
-			<select id="{$input_name}" name="{$input_name}">
+			<select id="{$input_name}" {$extra} name="{$input_name}">
 				{foreach from=$spec['options'] item=option}
 					<option {if $value == $option}selected="true"{/if}>{$option}</option>
 				{/foreach}
 			</select>
 		{else if isset($spec['options_with_values'])}
-			<select id="{$input_name}" name="{$input_name}">
+			<select id="{$input_name}" {$extra} name="{$input_name}">
 				{foreach from=$spec['options_with_values'] item=option key=option_value}
 					<option value="{$option_value}" {if $value == $option_value}selected="true"{/if}>{$option}</option>
 				{/foreach}
@@ -48,13 +60,13 @@ function toggleLanguagSelection(node)
 			{l s='Error: Missing Options For List!!' mod='modframework'}
 		{/if}
 	{else if $spec['type'] == 'int'}
-		<input id="{$input_name}" name="{$input_name}" type="number" value="{$value}"/>
+		<input id="{$input_name}" name="{$input_name}" {$extra} type="number" value="{$value}"/>
 	{else if $spec['type'] == 'float' or $spec['type'] == 'double'}
-		<input id="{$input_name}" name="{$input_name}" type="number" step="any" value="{$value}"/>
+		<input id="{$input_name}" name="{$input_name}" {$extra} type="number" step="any" value="{$value}"/>
 	{else if $spec['type'] == 'date'}
-		<input id="{$input_name}" name="{$input_name}" type="date" value="{$value}"/>
+		<input id="{$input_name}" name="{$input_name}" {$extra} type="date" value="{$value}"/>
 	{else}
-		<input id="{$input_name}" name="{$input_name}" type="text" value="{$value}"/>
+		<input id="{$input_name}" name="{$input_name}" {$extra} type="text" value="{$value}"/>
 	{/if}
 
 {/function}
@@ -113,7 +125,7 @@ function toggleLanguagSelection(node)
 					{if $spec['required']}
 						<sup>*</sup>
 					{/if}
-					<p style="clear:both"></p>
+					<p style="clear:both">{if isset($spec['legend'])}{$spec['legend']}{/if}</p>
 				</div>
 			</div>
 		{/foreach}

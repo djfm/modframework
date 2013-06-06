@@ -8,7 +8,7 @@ class Object extends ObjectModel
 
 	public static function getObjectDefinition()
 	{
-		if(static::$object_definition === false)
+		if(!is_array(static::$object_definition) || empty(static::$object_definition))
 		{
 			static::$object_definition = array();
 
@@ -340,7 +340,13 @@ class Object extends ObjectModel
 				$spec  = $def['fields'][$field];
 			}
 			
+			if(method_exists($this, 'typeOverride') && is_array($t_override = $this->typeOverride($field)))
+			{
+				$spec = array_merge($spec, $t_override);
+			}
+
 			$typeoverride = lcfirst($kind).'TypeOverride';
+
 			if(method_exists($this, $typeoverride) && is_array($override = $this->$typeoverride($field)))
 			{
 				$spec = array_merge($spec, $override);

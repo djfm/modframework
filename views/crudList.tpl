@@ -18,7 +18,15 @@
 					{if $spec['id']}
 						<a href='{module_action module=$module_name action="show{$model}" object_identifier={$spec['value']}}'>{$spec['value']}</a>
 					{else}
-						{$spec['value']}
+						{if $spec['type'] == 'select' and (is_array($spec['options']) or is_array($spec['options_with_values']))}
+							{if is_array($spec['options'])}
+								{$spec['options'][$spec['value']]}
+							{else}
+								{$spec['options_with_values'][$spec['value']]}
+							{/if}						
+						{else}
+							{$spec['value']}
+						{/if}
 					{/if}
 				</td>
 			{/foreach}

@@ -348,19 +348,23 @@ class ModuleBase extends Module
 
 		$extra_template_parameters=array();
 
-		if($validation !== true)
+
+		if(!Tools::isSubmit('form_listener'))
 		{
-			$extra_template_parameters['validation_error'] = $validation;
-		}
-		else
-		{
-			if($saved = $object->save())
+			if($validation !== true)
 			{
-				$extra_template_parameters['saved'] = true;
+				$extra_template_parameters['validation_error'] = $validation;
 			}
 			else
 			{
-				$extra_template_parameters['saved'] = false;
+				if($saved = $object->save())
+				{
+					$extra_template_parameters['saved'] = true;
+				}
+				else
+				{
+					$extra_template_parameters['saved'] = false;
+				}
 			}
 		}
 
