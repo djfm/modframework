@@ -110,6 +110,7 @@ class ModuleBase extends Module
 
 	public static function getModuleActionUrl($module, $action, $arguments=array())
 	{
+		global $cookie;
 		$extra_arguments = "";
 		foreach($arguments as $key=>$value)
 		{
@@ -120,6 +121,7 @@ class ModuleBase extends Module
 
 	public function getResetUrl()
 	{
+		global $cookie;
 		return $url= "?token=".Tools::getAdminTokenLite('AdminModules', $cookie->id_lang)."&tab=AdminModules&module_name={$this->name}&reset";
 	}
 
@@ -511,13 +513,21 @@ class ModuleBase extends Module
 			$template_parameters = $this->{$route['method']}();
 		}
 		
+		$this->process();
+
 		global $smarty;
 		if(is_array($template_parameters))
 		{	
+			if(strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)
+			{
+				ob_clean();
+				die(json_encode($template_parameters));
+			}
+
 			$smarty->assign($template_parameters);
 		}
 
-		$this->process();
+
 
 		$this->assignFlash();
 

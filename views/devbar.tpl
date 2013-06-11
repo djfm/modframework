@@ -12,7 +12,7 @@
 	
 	div#devbar a
 	{
-		width:100px;
+		min-width:100px;
 		display: inline-block;
 		border-right: 1px solid#aaa;
 		padding:5px;
@@ -22,7 +22,7 @@
 	
 	div#devbar a:hover
 	{
-		font-weight: bold;
+		background-color: #DDF;
 	}
 	
 	div#devbar a.danger

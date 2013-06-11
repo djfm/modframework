@@ -20,8 +20,8 @@
 		<dd>
 			{if $spec['type'] == 'text'}
 				<pre>{$spec['value']}</pre>
-			{else if $spec['type'] == 'select' and (is_array($spec['options']) or is_array($spec['options_with_values']))}
-				{if is_array($spec['options'])}
+			{else if $spec['type'] == 'select' and ((isset($spec['options']) and is_array($spec['options'])) or (isset($spec['options_with_values']) and is_array($spec['options_with_values'])))}
+				{if isset($spec['options']) and is_array($spec['options'])}
 					{$spec['options'][$spec['value']]}
 				{else}
 					{$spec['options_with_values'][$spec['value']]}

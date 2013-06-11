@@ -37,8 +37,10 @@ function submit_parent_form(node)
 		{assign var=value value=$spec['value']}
 	{/if}
 
-	{if $spec['listen']}
+	{if isset($spec['listen']) and $spec['listen']}
 		{assign var=extra value="onchange='javascript:submit_parent_form(this)'"}
+	{else}
+		{assign var=extra value=''}
 	{/if}
 
 	{if $spec['type'] == 'text'}

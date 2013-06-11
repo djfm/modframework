@@ -2,14 +2,14 @@
 
 class Object extends ObjectModel
 {
-	protected static $fields_for_getfields = array();
-
 	public $identifier;
 
 	public static function getObjectDefinition()
 	{
 		if(!is_array(static::$object_definition) || empty(static::$object_definition))
 		{
+			$indexes = array();
+
 			static::$object_definition = array();
 
 			if(!isset(static::$description['identifier']))
@@ -29,7 +29,7 @@ class Object extends ObjectModel
 				static::$description['fields']['date_upd'] = 'datetime ?';
 			}
 
-			$exp = '/^\s*([a-z]+)(?:\s*\(\s*(\d+)\s*\))?\s*(lang)?\s*(\?)?\s*(\w+)?\s*$/';
+			$exp = '/^\s*([a-z]+)(?:\s*\(\s*(\d+)\s*\))?\s*(lang)?\s*(\?)?\s*(\w+)?\s*(?:(!|\+)(\w+))?$/';
 
 			foreach(static::$description['fields'] as $name => $def)
 			{
@@ -42,6 +42,28 @@ class Object extends ObjectModel
 					$lang 		= isset($m[3]) && ($m[3] == 'lang');
 					$optional 	= isset($m[4]) && ($m[4] == '?');
 					$validator  = isset($m[5]) ? $m[5] : false;
+
+					if(isset($m[6]))
+					{
+						$index_type = false;
+						if($m[6] == '!')
+						{
+							$index_type = 'unique';
+						}
+						else if($m[6] == '+')
+						{
+							$index_type = 'multiple';
+						}
+						if($index_type !== false)
+						{
+							$index_name = $m[7];
+							if(!isset($indexes[$index_name]))
+							{
+								$indexes[$index_name] = array('type' => $index_type, 'columns' => array());
+							}
+							$indexes[$index_name]['columns'][] = $name;
+						}
+					}
 
 					if($validator === false)
 					{
@@ -80,6 +102,8 @@ class Object extends ObjectModel
 				}
 			}
 
+			static::$object_definition['indexes'] = $indexes;
+		
 		}
 
 		return static::$object_definition;
@@ -155,7 +179,22 @@ class Object extends ObjectModel
 							.", PRIMARY KEY(".$definition['identifier'].", id_lang));";
 		}
 
-		echo "<pre>".print_r($statements,1)."</pre>";
+		foreach($definition['indexes'] as $name => $spec)
+		{
+			$sql_name = _DB_PREFIX_.$definition['table'].'_'.$name;
+
+			$fields   = array();
+			foreach($spec['columns'] as $column)
+			{
+				$fields[] = $definition['fields'][$column]['type'] == 'text' ? "$column (256)" : $column;
+			}
+
+			$uniqueness = $spec['type'] == 'unique' ? 'UNIQUE' : '';
+
+			$sql = "CREATE $uniqueness INDEX $sql_name ON "._DB_PREFIX_.$definition['table']." (".implode(', ', $fields).')';
+
+			$statements[] = $sql;
+		}
 
 		return $statements;
 	}
@@ -293,9 +332,24 @@ class Object extends ObjectModel
 		return $value;
 	}
 
-	public function getFields()
+	public static function encapsulate($field, $value)
 	{
 		$definition = static::getObjectDefinition();
+		$type  		= $definition['fields'][$field]['type'];
+
+		
+		if($type == 'string' or $type == 'text' or $type == 'datetime' or $type == 'date')
+		{
+			$value = "'$value'";
+		}
+		
+
+		return $value;
+	}
+
+	public function getFields()
+	{
+		static::getObjectDefinition();
 		$fields = array();
 		foreach(static::$fields_for_getfields as $field)
 		{
@@ -337,7 +391,14 @@ class Object extends ObjectModel
 			else
 			{
 				$field = $maybe_spec;
-				$spec  = $def['fields'][$field];
+				if(isset($def['fields'][$field]))
+				{
+					$spec  = $def['fields'][$field];
+				}
+				else
+				{
+					$spec = array();
+				}
 			}
 			
 			if(method_exists($this, 'typeOverride') && is_array($t_override = $this->typeOverride($field)))
@@ -354,19 +415,22 @@ class Object extends ObjectModel
 
 			$spec['id'] 	= ($field == $def['identifier']);
 
-			if($spec['lang'] && isset($options['id_lang']) && $options['id_lang'])
+			if(!isset($spec['value']))
 			{
-				$spec['value']	= $this->{$field}[$options['id_lang']];
-			}
-			else if(!$spec['id'])
-			{
-				$spec['value']	= $this->$field;
-			}
-			else
-			{
-				$spec['value'] = $this->id;
-				$spec['title'] = 'ID';
-			}
+				if(isset($spec['lang']) && $spec['lang'] && isset($options['id_lang']) && $options['id_lang'])
+				{
+					$spec['value']	= $this->{$field}[$options['id_lang']];
+				}
+				else if(!$spec['id'])
+				{
+					$spec['value']	= $this->$field;
+				}
+				else 
+				{
+					$spec['value'] = $this->id;
+					$spec['title'] = 'ID';
+				}
+			}			
 
 			if(!isset($spec['title']))
 			{
@@ -426,7 +490,7 @@ class Object extends ObjectModel
 		if(!empty($conditions))
 		{
 			$wheres = array();
-			foreach($condition as $field => $value)
+			foreach($conditions as $field => $value)
 			{
 				$t = $def['fields'][$field]['lang'] ? 'tl' : 't';
 				if(is_array($value))
@@ -440,7 +504,14 @@ class Object extends ObjectModel
 				}
 				else
 				{
-					$wheres[] = "$t.$field = " . static::protect($field, $value);
+					if($value === null)
+					{
+						$wheres[] = "$t.$field IS NULL";
+					}
+					else
+					{
+						$wheres[] = "$t.$field = " . static::encapsulate($field, static::protect($field, $value));
+					}
 				}
 			}
 			$sql .= " WHERE " . implode(' AND ', $wheres);
@@ -456,6 +527,7 @@ class Object extends ObjectModel
 		}
 
 		$objects = array();
+
 
 		foreach(Db::getInstance()->ExecuteS($sql) as $row)
 		{

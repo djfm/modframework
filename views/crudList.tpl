@@ -1,6 +1,6 @@
 <h2>{$model} {l s='List' mod='modframework'}</h2>
 
-<a href="{module_action module=$module_name action="new{$model}" object_identifier=$object->id}"><img src="../img/admin/add.gif" border="0">{l s='Create' mod='modframework'} {$model}</a>
+<a href="{module_action module=$module_name action="new{$model}"}"><img src="../img/admin/add.gif" border="0">{l s='Create' mod='modframework'} {$model}</a>
 <br/><br/>
 
 {if not empty($types)}
@@ -18,8 +18,8 @@
 					{if $spec['id']}
 						<a href='{module_action module=$module_name action="show{$model}" object_identifier={$spec['value']}}'>{$spec['value']}</a>
 					{else}
-						{if $spec['type'] == 'select' and (is_array($spec['options']) or is_array($spec['options_with_values']))}
-							{if is_array($spec['options'])}
+						{if $spec['type'] == 'select' and ((isset($spec['options']) and is_array($spec['options'])) or (isset($spec['options_with_values']) and is_array($spec['options_with_values'])))}
+							{if isset($spec['options']) and is_array($spec['options'])}
 								{$spec['options'][$spec['value']]}
 							{else}
 								{$spec['options_with_values'][$spec['value']]}
